@@ -1,0 +1,337 @@
+---
+sidebar: sidebar 
+permalink: trident-get-started/kubernetes-deploy-operator.html 
+keywords: deploy, astra trident, methods, operator, tridentctl, helm 
+summary: Você pode implantar o Astra Trident com o operador Trident. Você pode implantar o operador Trident manualmente ou usando o Helm. 
+---
+= Implante com o operador Trident
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Você pode implantar o Astra Trident usando o operador Trident.
+
+
+
+== Informações críticas sobre o Astra Trident 22,10
+
+*Você deve ler as seguintes informações críticas antes de atualizar para o Astra Trident 22,10.*
+
+[WARNING]
+.<strong> informações críticas sobre o Astra Trident 22.10 </strong>
+====
+* O Kubernetes 1,25 agora é compatível com o Trident. É necessário atualizar para o Astra Trident 22,10 antes da atualização para o Kubernetes 1,25.
+* O Astra Trident agora reforça estritamente o uso de configuração multipathing em ambientes SAN, com um valor recomendado de `find_multipaths: no` no arquivo multipath.conf.
++
+O uso de configuração não multipathing ou o uso `find_multipaths: yes` de ou `find_multipaths: smart` valor no arquivo multipath.conf resultará em falhas de montagem. A Trident recomenda o uso de `find_multipaths: no` desde a versão 21,07.
+
+
+
+====
+
+
+== Opções de implantação do operador Trident
+
+Você pode implantar o operador Trident de duas maneiras:
+
+* Usando o Trident link:https://artifacthub.io/packages/helm/netapp-trident/trident-operator["Carta do leme"^]: o Gráfico Helm implanta o operador Trident e instala o Trident em uma etapa.
+* Manualmente: O Trident fornece um arquivo que pode ser usado para instalar o operador e criar objetos associados.
++
+** Para clusters com Kubernetes 1,24 ou inferior, use link:https://github.com/NetApp/trident/tree/stable/v22.10/deploy/bundle_pre_1_25.yaml["bundle_pre_1_25.yaml"^]o .
+** Para clusters com Kubernetes 1,25 ou superior, use link:https://github.com/NetApp/trident/tree/stable/v22.10/deploy/bundle_post_1_25.yaml["bundle_post_1_25.yaml"^]o .
+
+
+
+
+
+TIP: Se você ainda não se familiarizou com o link:../trident-concepts/intro.html["conceitos básicos"^], agora é um ótimo momento para fazer isso.
+
+
+
+== Verifique os pré-requisitos
+
+Para implantar o Astra Trident, os seguintes pré-requisitos devem ser atendidos:
+
+* Você tem o Privileges completo para um cluster Kubernetes compatível com a execução de uma versão compatível do Kubernetes. Reveja o link:requirements.html["requisitos"].
+* Você tem acesso a um sistema de storage NetApp compatível.
+* Você tem a capacidade de montar volumes de todos os nós de trabalho do Kubernetes.
+* Você tem um host Linux com `kubectl` (ou `oc`, se estiver usando o OpenShift) instalado e configurado para gerenciar o cluster do Kubernetes que deseja usar.
+* Você definiu a `KUBECONFIG` variável de ambiente para apontar para a configuração do cluster do Kubernetes.
+* Você ativou o link:requirements.html["Portas de recurso exigidas pelo Astra Trident"^].
+* Se você estiver usando o Kubernetes com Docker Enterprise https://docs.docker.com/ee/ucp/user-access/cli/["Siga os passos para ativar o acesso CLI"^], .
+
+
+Tem tudo isso? Ótimo! Vamos começar.
+
+
+
+== Implante o operador Trident e instale o Astra Trident usando o Helm
+
+Execute as etapas listadas para implantar o operador Trident usando Helm.
+
+.O que você vai precisar
+Além dos pré-requisitos listados acima, para implantar o operador Trident usando o Helm, você precisa do seguinte:
+
+* A link:requirements.html["Versão do Kubernetes compatível"]
+* Helm versão 3
+
+
+.Passos
+. Adicionar o repositório Helm do Trident:
++
+[listing]
+----
+helm repo add netapp-trident https://netapp.github.io/trident-helm-chart
+----
+. Use o `helm install` comando e especifique um nome para sua implantação. Veja o exemplo a seguir:
++
+[listing]
+----
+helm install <name> netapp-trident/trident-operator --version 22.10.0 --create-namespace --namespace <trident-namespace>
+----
++
+
+NOTE: Se você já criou um namespace para Trident, o `--create-namespace` parâmetro não criará um namespace adicional.
+
+
+
+Há duas maneiras de passar dados de configuração durante a instalação:
+
+* `--values` (Ou `-f`): Especifique um arquivo YAML com substituições. Isso pode ser especificado várias vezes e o arquivo mais à direita terá precedência.
+* `--set`: Especificar substituições na linha de comando.
+
+
+Por exemplo, para alterar o valor padrão `debug` do , execute o seguinte `--set` comando:
+
+[listing]
+----
+helm install <name> netapp-trident/trident-operator --version 22.10.0 --create-namespace --namespace --set tridentDebug=true
+----
+O `values.yaml` arquivo, que faz parte do gráfico Helm, fornece a lista de chaves e seus valores padrão.
+
+`helm list` mostra detalhes sobre a instalação, como nome, namespace, gráfico, status, versão do aplicativo, número de revisão e assim por diante.
+
+
+
+== Implante o operador Trident manualmente e instale o Trident
+
+Execute as etapas listadas para implantar manualmente o operador Trident.
+
+
+
+=== Etapa 1: Qualifique seu cluster Kubernetes
+
+A primeira coisa que você precisa fazer é fazer login no host Linux e verificar se ele está gerenciando um _working_, link:requirements.html["Cluster compatível com Kubernetes"^] que você tem o Privileges necessário para.
+
+
+NOTE: Com OpenShift, use `oc` em vez de `kubectl` em todos os exemplos que se seguem, e faça login como *system:admin* primeiro executando `oc login -u system:admin` ou `oc login -u kube-admin`.
+
+Para verificar sua versão do Kubernetes, execute o seguinte comando:
+
+[listing]
+----
+kubectl version
+----
+Para ver se você tem o administrador do cluster do Kubernetes Privileges, execute o seguinte comando:
+
+[listing]
+----
+kubectl auth can-i '*' '*' --all-namespaces
+----
+Para verificar se você pode iniciar um pod que usa uma imagem do Docker Hub e alcançar seu sistema de armazenamento pela rede de pod, execute o seguinte comando:
+
+[listing]
+----
+kubectl run -i --tty ping --image=busybox --restart=Never --rm -- \
+  ping <management IP>
+----
+
+
+=== Passo 2: Baixe e configure o operador
+
+
+NOTE: A partir de 21,01, o operador Trident tem o escopo do cluster. O uso do operador Trident para instalar o Trident requer a criação da `TridentOrchestrator` Definição de recursos personalizada (CRD) e a definição de outros recursos. Você deve executar estas etapas para configurar o operador antes de poder instalar o Astra Trident.
+
+. Baixe e extraia a versão mais recente do pacote de instalação do Trident link:https://github.com/NetApp/trident/releases/latest["A seção _assets_ no GitHub"^]do .
++
+[listing]
+----
+wget https://github.com/NetApp/trident/releases/download/v22.10.0/trident-installer-22.10.0.tar.gz
+tar -xf trident-installer-22.10.0.tar.gz
+cd trident-installer
+----
+. Use o manifesto CRD apropriado para criar o `TridentOrchestrator` CRD. Em seguida, crie um `TridentOrchestrator` recurso personalizado mais tarde para instanciar uma instalação pelo operador.
++
+Execute o seguinte comando:
+
++
+[listing]
+----
+kubectl create -f deploy/crds/trident.netapp.io_tridentorchestrators_crd_post1.16.yaml
+----
+. Após a criação do `TridentOrchestrator` CRD, crie os seguintes recursos necessários para a implantação do operador:
++
+** Um ServiceAccount para o operador
+** Um ClusterRole e ClusterRoleBinding para o ServiceAccount
+** Uma PodSecurityPolicy dedicada
+** O próprio operador
++
+O instalador do Trident contém manifestos para definir esses recursos. Por padrão, o operador é implantado no `trident` namespace. Se o `trident` namespace não existir, use o manifesto a seguir para criar um.
+
++
+[listing]
+----
+kubectl apply -f deploy/namespace.yaml
+----
+
+
+. Para implantar o operador em um namespace diferente do namespace padrão `trident`, você deve atualizar o `serviceaccount.yaml`, `clusterrolebinding.yaml` e `operator.yaml` manifesta e gera o `bundle.yaml`.
++
+Execute o seguinte comando para atualizar os manifestos YAML e gerar o `bundle.yaml` usando o `kustomization.yaml`:
+
++
+[listing]
+----
+kubectl kustomize deploy/ > deploy/bundle.yaml
+----
++
+Execute o seguinte comando para criar os recursos e implantar o operador:
+
++
+[listing]
+----
+kubectl create -f deploy/bundle.yaml
+----
+. Para verificar o status do operador depois de ter implantado, faça o seguinte:
++
+[listing]
+----
+kubectl get deployment -n <operator-namespace>
+
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+trident-operator   1/1     1            1           3m
+----
++
+[listing]
+----
+kubectl get pods -n <operator-namespace>
+
+NAME                              READY   STATUS             RESTARTS   AGE
+trident-operator-54cb664d-lnjxh   1/1     Running            0          3m
+----
+
+
+A implantação do operador cria com êxito um pod em execução em um dos nós de trabalho no cluster.
+
+
+IMPORTANT: Deve haver apenas *uma instância* do operador em um cluster do Kubernetes. Não crie várias implantações do operador Trident.
+
+
+
+=== Passo 3: Crie `TridentOrchestrator` e instale o Trident
+
+Agora você está pronto para instalar o Astra Trident usando o operador! Isso exigirá a criação `TridentOrchestrator`do . O instalador do Trident vem com exemplos de definições para criar `TridentOrchestrator`. Isso inicia uma instalação no `trident` namespace.
+
+[listing]
+----
+kubectl create -f deploy/crds/tridentorchestrator_cr.yaml
+tridentorchestrator.trident.netapp.io/trident created
+
+kubectl describe torc trident
+Name:        trident
+Namespace:
+Labels:      <none>
+Annotations: <none>
+API Version: trident.netapp.io/v1
+Kind:        TridentOrchestrator
+...
+Spec:
+  Debug:     true
+  Namespace: trident
+Status:
+  Current Installation Params:
+    IPv6:                      false
+    Autosupport Hostname:
+    Autosupport Image:         netapp/trident-autosupport:22.10
+    Autosupport Proxy:
+    Autosupport Serial Number:
+    Debug:                     true
+    Image Pull Secrets:
+    Image Registry:
+    k8sTimeout:           30
+    Kubelet Dir:          /var/lib/kubelet
+    Log Format:           text
+    Silence Autosupport:  false
+    Trident Image:        netapp/trident:21.04.0
+  Message:                  Trident installed  Namespace:                trident
+  Status:                   Installed
+  Version:                  v21.04.0
+Events:
+    Type Reason Age From Message ---- ------ ---- ---- -------Normal
+    Installing 74s trident-operator.netapp.io Installing Trident Normal
+    Installed 67s trident-operator.netapp.io Trident installed
+----
+O operador Trident permite personalizar a maneira como o Astra Trident é instalado usando os atributos na `TridentOrchestrator` especificação. link:kubernetes-customize-deploy.html["Personalize a implantação do Trident"^]Consulte .
+
+O Status do `TridentOrchestrator` indica se a instalação foi bem-sucedida e exibe a versão do Trident instalado.
+
+[cols="2"]
+|===
+| Estado | Descrição 
+
+
+| A instalar | O operador está instalando o Astra Trident usando este `TridentOrchestrator` CR. 
+
+
+| Instalado | O Astra Trident foi instalado com sucesso. 
+
+
+| Desinstalação | O operador está desinstalando o Astra Trident,
+`spec.uninstall=true` porque . 
+
+
+| Desinstalado | O Astra Trident foi desinstalado. 
+
+
+| Falha | O operador não pôde instalar, corrigir, atualizar ou desinstalar o Astra Trident; o operador tentará recuperar automaticamente deste estado. Se este estado persistir, será necessário resolver o problema. 
+
+
+| A atualizar | O operador está atualizando uma instalação existente. 
+
+
+| Erro | O `TridentOrchestrator` não é utilizado. Outro já existe. 
+|===
+Durante a instalação, o status das `TridentOrchestrator` alterações de `Installing` para `Installed`. Se observar o `Failed` estado e o operador não conseguir recuperar sozinho, deve verificar os registos do operador. Consulte link:../troubleshooting.html["solução de problemas"^]a secção .
+
+Você pode confirmar se a instalação do Astra Trident foi concluída dando uma olhada nos pods criados:
+
+[listing]
+----
+kubectl get pod -n trident
+
+NAME                                READY   STATUS    RESTARTS   AGE
+trident-csi-7d466bf5c7-v4cpw        5/5     Running   0           1m
+trident-csi-mr6zc                   2/2     Running   0           1m
+trident-csi-xrp7w                   2/2     Running   0           1m
+trident-csi-zh2jt                   2/2     Running   0           1m
+trident-operator-766f7b8658-ldzsv   1/1     Running   0           3m
+----
+Você também pode usar `tridentctl` para verificar a versão do Astra Trident instalada.
+
+[listing]
+----
+./tridentctl -n trident version
+
++----------------+----------------+
+| SERVER VERSION | CLIENT VERSION |
++----------------+----------------+
+| 21.04.0        | 21.04.0        |
++----------------+----------------+
+----
+Agora você pode ir em frente e criar um backend. link:kubernetes-postdeployment.html["tarefas pós-implantação"^]Consulte .
+
+
+TIP: Para solucionar problemas durante a implantação, consulte link:../troubleshooting.html["solução de problemas"^] a seção.

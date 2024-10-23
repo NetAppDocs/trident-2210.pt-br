@@ -1,0 +1,173 @@
+---
+sidebar: sidebar 
+permalink: trident-get-started/kubernetes-deploy.html 
+keywords: deploy, astra trident, methods, operator, tridentctl, helm 
+summary: 'Você pode implantar o Astra Trident usando o operador Trident ou com `tridentctl`o .' 
+---
+= Visão geral da implantação
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Você pode implantar o Astra Trident usando o operador Trident ou com `tridentctl`o .
+
+
+NOTE: A partir da versão 22,04, as chaves AES não serão mais regeneradas sempre que o Astra Trident for instalado. Com este lançamento, o Astra Trident instalará um novo objeto secreto que persiste em todas as instalações. Isso significa que `tridentctl` no 22,04 pode desinstalar versões anteriores do Trident, mas versões anteriores não podem desinstalar instalações do 22,04.
+
+
+
+== Informações críticas sobre o Astra Trident 22,10
+
+*Você deve ler as seguintes informações críticas antes de atualizar para o Astra Trident 22,10.*
+
+[WARNING]
+.<strong> informações críticas sobre o Astra Trident 22.10 </strong>
+====
+* O Kubernetes 1,25 agora é compatível com o Trident. É necessário atualizar para o Astra Trident 22,10 antes da atualização para o Kubernetes 1,25.
+* O Astra Trident agora reforça estritamente o uso de configuração multipathing em ambientes SAN, com um valor recomendado de `find_multipaths: no` no arquivo multipath.conf.
++
+O uso de configuração não multipathing ou o uso `find_multipaths: yes` de ou `find_multipaths: smart` valor no arquivo multipath.conf resultará em falhas de montagem. A Trident recomenda o uso de `find_multipaths: no` desde a versão 21,07.
+
+
+
+====
+
+
+== Escolha o método de implantação
+
+Para determinar qual método de implantação usar, considere o seguinte:
+
+
+
+=== Quando utilizar o operador Trident
+
+O link:kubernetes-deploy-operator.html["Operador Trident"^] é uma ótima maneira de gerenciar dinamicamente os recursos do Astra Trident e automatizar a fase de configuração. Existem alguns pré-requisitos que devem ser satisfeitos. link:requirements.html["os requisitos"^]Consulte .
+
+O operador Trident fornece vários benefícios, conforme descrito abaixo.
+
+
+
+==== Funcionalidade de autorrecuperação
+
+Você pode monitorar uma instalação do Astra Trident e tomar medidas ativamente para resolver problemas, como quando a implantação é excluída ou se for modificada acidentalmente. Quando o operador é configurado como uma implantação, um `trident-operator-<generated-id>` pod é criado. Este pod associa um `TridentOrchestrator` CR a uma instalação do Astra Trident e garante sempre que existe apenas uma ativa `TridentOrchestrator`. Em outras palavras, o operador garante que haja apenas uma instância do Astra Trident no cluster e controla sua configuração, garantindo que a instalação seja idempotente. Quando as alterações são feitas na instalação (como, por exemplo, a exclusão do daemonset de implantação ou nó), o operador as identifica e as corrige individualmente.
+
+
+
+==== Atualizações fáceis para instalações existentes
+
+Você pode facilmente atualizar uma implantação existente com o operador. Você só precisa editar o `TridentOrchestrator` CR para fazer atualizações em uma instalação. Por exemplo, considere um cenário em que você precisa habilitar o Astra Trident para gerar logs de depuração.
+
+Para fazer isso, corrija o `TridentOrchestrator` para definir `spec.debug` como `true`:
+
+[listing]
+----
+kubectl patch torc <trident-orchestrator-name> -n trident --type=merge -p '{"spec":{"debug":true}}'
+----
+Após `TridentOrchestrator` a atualização, o operador processa as atualizações e corrige a instalação existente. Isso pode acionar a criação de novos pods para modificar a instalação de acordo.
+
+
+
+==== Manipula automaticamente as atualizações do Kubernetes
+
+Quando a versão do Kubernetes do cluster é atualizada para uma versão compatível, a operadora atualiza uma instalação existente do Astra Trident automaticamente e a altera para garantir que ela atenda aos requisitos da versão do Kubernetes.
+
+
+NOTE: Se o cluster for atualizado para uma versão não suportada, o operador impede a instalação do Astra Trident. Se o Astra Trident já tiver sido instalado com a operadora, um aviso será exibido para indicar que o Astra Trident está instalado em uma versão Kubernetes não suportada.
+
+
+
+==== Gerenciar clusters do Kubernetes usando o BlueXP  (anteriormente conhecido como Cloud Manager)
+
+Com link:https://docs.netapp.com/us-en/cloud-manager-kubernetes/concept-kubernetes.html["Astra Trident usando BlueXP"^]o , você pode atualizar para a versão mais recente do Astra Trident, adicionar e gerenciar classes de storage, conectá-las a ambientes de trabalho e fazer backup de volumes persistentes usando o Cloud Backup Service. O BlueXP  oferece suporte à implantação do Astra Trident usando o operador Trident, manualmente ou usando o Helm.
+
+
+
+=== Quando usar Helm
+
+Se você tiver outras aplicações que está gerenciando usando o Helm, a partir do Astra Trident 21,01, poderá gerenciar sua implantação também usando o Helm.
+
+
+
+=== Quando usar `tridenctl`
+
+Se você tiver uma implantação existente que deve ser atualizada ou se você estiver procurando personalizar altamente sua implantação, considere usar link:kubernetes-deploy-tridentctl.html["tridentctl"^]o . Esse é o método convencional de implantação do Astra Trident.
+
+
+
+== Considerações para mover entre métodos de implantação
+
+Não é difícil imaginar um cenário em que se deseja mover entre métodos de implantação. Você deve considerar o seguinte antes de tentar mover de uma `tridentctl` implantação para uma implantação baseada em operador ou vice-versa:
+
+* Use sempre o mesmo método para desinstalar o Astra Trident. Se você implantou com `tridentctl`o , use a versão apropriada `tridentctl` do binário para desinstalar o Astra Trident. Da mesma forma, se você estiver implantando com o operador, edite o `TridentOrchestrator` CR e configure `spec.uninstall=true` para desinstalar o Astra Trident.
+* Se você tiver uma implantação baseada em operador que deseja remover e usar `tridentctl` para implantar o Astra Trident, primeiro edite `TridentOrchestrator` e configure `spec.uninstall=true` para desinstalar o Astra Trident. Em seguida, exclua `TridentOrchestrator` e a implantação do operador. Você pode instalar usando `tridentctl`o .
+* Se você tiver uma implantação manual baseada em operador e quiser usar a implantação de operador Trident baseada em Helm, desinstale manualmente o operador primeiro e, em seguida, faça a instalação do Helm. Isso permite que o Helm implante o operador Trident com as etiquetas e anotações necessárias. Se você não fizer isso, sua implantação de operador Trident baseada em Helm falhará com erro de validação de rótulo e erro de validação de anotação. Se você tem uma `tridentctl` implantação baseada em -, você pode usar a implantação baseada em Helm sem problemas.
+
+
+
+
+== Entenda os modos de implantação
+
+Há três maneiras de implantar o Astra Trident.
+
+
+
+=== Implantação padrão
+
+A implantação do Trident em um cluster Kubernetes resulta no instalador do Astra Trident fazendo duas coisas:
+
+* A obter as imagens de contentor através da Internet
+* Criação de um daemonset de implantação e/ou nó, que ativa pods do Astra Trident em todos os nós qualificados no cluster do Kubernetes.
+
+
+Uma implantação padrão como essa pode ser realizada de duas maneiras diferentes:
+
+* Utilização `tridentctl install`
+* Utilizando o operador Trident. Você pode implantar o operador Trident manualmente ou usando o Helm.
+
+
+Esse modo de instalação é a maneira mais fácil de instalar o Astra Trident e funciona para a maioria dos ambientes que não impõem restrições de rede.
+
+
+
+=== Implantação off-line
+
+Para executar uma implantação do AIR-gapped, você pode usar o `--image-registry` sinalizador ao chamar `tridentctl install` para apontar para um Registro de imagem privado. Se estiver implantando com o operador Trident, você poderá especificar `spec.imageRegistry` no `TridentOrchestrator`. Esse Registro deve conter as https://hub.docker.com/r/netapp/trident/["Imagem Trident"^] imagens sidecar , https://hub.docker.com/r/netapp/trident-autosupport/["Imagem Trident AutoSupport"^] e CSI, conforme exigido pela versão do Kubernetes.
+
+Para personalizar sua implantação, você pode usar `tridentctl` para gerar os manifestos para os recursos do Trident. Isso inclui a implantação, o daemonset, a conta de serviço e a função de cluster que o Astra Trident cria como parte de sua instalação.
+
+Consulte esses links para obter mais informações sobre como personalizar sua implantação:
+
+* link:kubernetes-customize-deploy.html["Personalize sua implantação baseada em operador"^]
+* 
+
+
+
+IMPORTANT: Se você estiver usando um repositório de imagens privado, você deve adicionar `/sig-storage` ao final da URL do Registro privado. Ao usar um Registro privado para `tridentctl` implantação, você deve usar `--trident-image` e `--autosupport-image` em conjunto `--image-registry`com o . Se você estiver implantando o Astra Trident usando o operador Trident, verifique se o orquestrador CR inclui `tridentImage` e `autosupportImage` nos parâmetros de instalação.
+
+
+
+=== Implantação remota
+
+Aqui está uma visão geral de alto nível do processo de implantação remota:
+
+* Implante a versão apropriada do `kubectl` na máquina remota de onde você deseja implantar o Astra Trident.
+* Copie os arquivos de configuração do cluster do Kubernetes e defina a `KUBECONFIG` variável de ambiente na máquina remota.
+* Inicie um `kubectl get nodes` comando para verificar se você pode se conetar ao cluster do Kubernetes necessário.
+* Conclua a implementação a partir da máquina remota utilizando as etapas de instalação padrão.
+
+
+
+
+== Outras opções de configuração conhecidas
+
+Ao instalar o Astra Trident em produtos do portfólio VMware Tanzu:
+
+* O cluster precisa dar suporte a workloads privilegiados.
+* A `--kubelet-dir` bandeira deve ser definida para a localização do diretório kubelet. Por padrão, isso é `/var/vcap/data/kubelet`.
++
+Especificar a localização do kubelet usando `--kubelet-dir` é conhecido por funcionar para o Operador Trident, Helm e `tridentctl` implantações.
+
+

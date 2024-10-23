@@ -1,0 +1,161 @@
+---
+sidebar: sidebar 
+permalink: trident-use/worker-node-prep.html 
+keywords: storage class, manage storage class, storage classes, kubernetes storage classes, worker node, nfs, iscsi, kubernetes clusters 
+summary: Todos os nós de trabalho no cluster do Kubernetes precisam ser capazes de montar os volumes provisionados para os pods. Se você estiver usando o driver ONTAP-nas, ONTAP-nas-Economy, ONTAP-nas-FlexGroup para um de seus back-ends, seus nós de trabalho precisarão das ferramentas NFS. Caso contrário, eles exigem as ferramentas iSCSI. 
+---
+= Prepare o nó de trabalho
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+Todos os nós de trabalho no cluster do Kubernetes precisam ser capazes de montar os volumes provisionados para os pods. Se você estiver usando o `ontap-nas` driver , `ontap-nas-economy` ou `ontap-nas-flexgroup` para um dos seus backends, os nós de trabalho precisarão das ferramentas NFS. Caso contrário, eles exigem as ferramentas iSCSI.
+
+Versões recentes do RedHat CoreOS têm NFS e iSCSI instalados por padrão.
+
+
+WARNING: Você deve sempre reinicializar seus nós de trabalho depois de instalar as ferramentas NFS ou iSCSI, ou então anexar volumes a contentores pode falhar.
+
+
+
+== Detecção de serviço de nós
+
+A partir de 22,07, o Astra Trident tenta detetar automaticamente se o nó é capaz de executar serviços iSCSI ou NFS. O Astra Trident cria eventos para o nó a fim de identificar os serviços descobertos. Você pode revisar esses eventos usando o comando:
+
+[listing]
+----
+kubectl get event -A --field-selector involvedObject.name=<Kubernetes node name>
+----
+O Trident também identifica os serviços ativados para cada nó no CR do nó Trident. Para exibir os serviços descobertos, use o comando:
+
+[listing]
+----
+tridentctl get node -o wide -n <Trident namespace>
+----
+
+NOTE: A descoberta de serviço de nó identifica os serviços descobertos, mas não garante que os serviços estejam configurados corretamente. Por outro lado, a ausência de um serviço descoberto não garante que a montagem de volume falhe.
+
+
+
+== Volumes NFS
+
+[cols="3*"]
+|===
+| Protocolo | Sistema operacional | Comandos 
+
+
+| NFS  a| 
+RHEL/CentOS 7
+ a| 
+`sudo yum install -y nfs-utils`
+
+
+
+| NFS  a| 
+Ubuntu
+ a| 
+`sudo apt-get install -y nfs-common`
+
+|===
+
+NOTE: Você deve garantir que o serviço NFS seja iniciado durante o tempo de inicialização.
+
+
+
+== Volumes iSCSI
+
+Considere o seguinte ao usar volumes iSCSI:
+
+* Cada nó no cluster do Kubernetes precisa ter uma IQN exclusiva. *Este é um pré-requisito necessário*.
+* Se estiver usando RHCOS versão 4,5 ou posterior, ou outra distribuição Linux compatível com RHEL, com o `solidfire-san` driver e o Element OS 12,5 ou anterior, verifique se o algoritmo de autenticação CHAP está definido como MD5 em `/etc/iscsi/iscsid.conf`. algoritmos CHAP compatíveis com FIPS seguros SHA1, SHA-256 e SHA3-256 estão disponíveis com o elemento 12,7.
++
+[listing]
+----
+sudo sed -i 's/^\(node.session.auth.chap_algs\).*/\1 = MD5/' /etc/iscsi/iscsid.conf
+----
+* Ao usar nós de trabalho que executam RHEL/RedHat CoreOS com iSCSI PVs, certifique-se de especificar a `discard` mountOption no StorageClass para executar a recuperação de espaço em linha.  https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_file_systems/discarding-unused-blocks_managing-file-systems["Documentação da RedHat"^]Consulte .
+
+
+[cols="3*"]
+|===
+| Protocolo | Sistema operacional | Comandos 
+
+
+| ISCSI  a| 
+RHEL/CentOS
+ a| 
+. Instale os seguintes pacotes de sistema:
++
+`sudo yum install -y lsscsi iscsi-initiator-utils sg3_utils device-mapper-multipath`
+
+. Verifique se a versão iscsi-iniciador-utils é 6,2.0,874-2.el7 ou posterior:
++
+`rpm -q iscsi-initiator-utils`
+
+. Definir a digitalização para manual:
++
+`sudo sed -i 's/^\(node.session.scan\).*/\1 = manual/' /etc/iscsi/iscsid.conf`
+
+. Ativar multipathing:
++
+`sudo mpathconf --enable --with_multipathd y --find_multipaths n`
+
++
+
+NOTE: Certifique-se de `etc/multipath.conf` que contém `find_multipaths no` `defaults` em .
+
+. Certifique-se de que `iscsid` e `multipathd` estão a funcionar:
++
+`sudo systemctl enable --now iscsid multipathd`
+
+. Ativar e iniciar `iscsi`:
++
+`sudo systemctl enable --now iscsi`
+
+
+
+
+
+| ISCSI  a| 
+Ubuntu
+ a| 
+. Instale os seguintes pacotes de sistema:
++
+`sudo apt-get install -y open-iscsi lsscsi sg3-utils multipath-tools scsitools`
+
+. Verifique se a versão Open-iscsi é 2,0.874-5ubuntu2.10 ou posterior (para bionic) ou 2,0.874-7.1ubuntu6.1 ou posterior (para focal):
++
+`dpkg -l open-iscsi`
+
+. Definir a digitalização para manual:
++
+`sudo sed -i 's/^\(node.session.scan\).*/\1 = manual/' /etc/iscsi/iscsid.conf`
+
+. Ativar multipathing:
++
+`sudo tee /etc/multipath.conf <<-'EOF'
+defaults {
+    user_friendly_names yes
+    find_multipaths no
+}
+EOF
+sudo systemctl enable --now multipath-tools.service
+sudo service multipath-tools restart`
+
++
+
+NOTE: Certifique-se de `etc/multipath.conf` que contém `find_multipaths no` `defaults` em .
+
+. Certifique-se de que `open-iscsi` e `multipath-tools` estão ativados e em execução:
++
+`sudo systemctl status multipath-tools`
+`sudo systemctl enable --now open-iscsi.service`
+`sudo systemctl status open-iscsi`
+
+
+
+|===
+
+NOTE: Para o Ubuntu 18,04, você deve descobrir portas de destino com `iscsiadm` antes de iniciar `open-iscsi` o daemon iSCSI para iniciar. Em alternativa, pode modificar o `iscsi` serviço para iniciar `iscsid` automaticamente.

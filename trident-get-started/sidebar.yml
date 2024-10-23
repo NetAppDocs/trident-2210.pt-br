@@ -1,0 +1,22 @@
+---
+section: trident-get-started
+title: Comece agora
+entries:
+- title: Experimente
+  url: "/trident-get-started/quickstart.html"
+- title: Requisitos
+  url: "/trident-get-started/requirements.html"
+- title: Visão geral da implantação
+  url: "/trident-get-started/kubernetes-deploy.html"
+- title: Implante com o operador Trident
+  url: "/trident-get-started/kubernetes-deploy-operator.html"
+  entries:
+  - title: Personalizar a implantação do operador Trident
+    url: "/trident-get-started/kubernetes-customize-deploy.html"
+- title: Implante com o tridentctl
+  url: "/trident-get-started/kubernetes-deploy-tridentctl.html"
+  entries:
+  - title: Personalizar a implantação do tridentctl
+    url: "/trident-get-started/kubernetes-customize-deploy-tridentctl.html"
+- title: O que se segue?
+  url: "/trident-get-started/kubernetes-postdeployment.html"

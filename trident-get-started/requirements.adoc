@@ -1,0 +1,263 @@
+---
+sidebar: sidebar 
+permalink: trident-get-started/requirements.html 
+keywords: trident requirements, supported front ends, supported backends, kubernetes cluster, cluster requirements, version requirements, supported versions, host configuration, host os, system configuration, host operating system, fsx 
+summary: Comece revisando os front-ends, backends e configuração de host suportados. 
+---
+= Requisitos
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Comece revisando os front-ends, backends e configuração de host suportados.
+
+
+NOTE: Para saber mais sobre as portas que o Astra Trident usa, link:../trident-reference/ports.html["aqui"]consulte .
+
+
+
+== Informações críticas sobre o Astra Trident 22,10
+
+*Você deve ler as seguintes informações críticas antes de atualizar para o Astra Trident 22,10.*
+
+[WARNING]
+.<strong> informações críticas sobre o Astra Trident 22.10 </strong>
+====
+* O Kubernetes 1,25 agora é compatível com o Trident. É necessário atualizar para o Astra Trident 22,10 antes da atualização para o Kubernetes 1,25.
+* O Astra Trident agora reforça estritamente o uso de configuração multipathing em ambientes SAN, com um valor recomendado de `find_multipaths: no` no arquivo multipath.conf.
++
+O uso de configuração não multipathing ou o uso `find_multipaths: yes` de ou `find_multipaths: smart` valor no arquivo multipath.conf resultará em falhas de montagem. A Trident recomenda o uso de `find_multipaths: no` desde a versão 21,07.
+
+
+
+====
+
+
+== Frontens suportados (orquestradores)
+
+O Astra Trident é compatível com vários mecanismos de contêiner e orquestradores, incluindo os seguintes:
+
+* Anthos On-Prem (VMware) e Anthos em bare metal 1,9, 1,10, 1,11
+* Kubernetes 1,20 - 1,25
+* Mecanismo do Kubernetes do Mirantis 3,5
+* OpenShift 4,8, 4,9, 4,10, 4,11
+
+
+O operador Trident é suportado com estas versões:
+
+* Anthos On-Prem (VMware) e Anthos em bare metal 1,9, 1,10, 1,11
+* Kubernetes 1,20 - 1,25
+* OpenShift 4,8, 4,9, 4,10, 4,11
+
+
+O Astra Trident também trabalha com uma série de outras ofertas do Kubernetes totalmente gerenciadas e autogeridas, incluindo o Google Kubernetes Engine (GKE), o Amazon Elastic Kubernetes Services (EKS), o Azure Kubernetes Service (AKS), o Rancher e o portfólio VMware Tanzu.
+
+
+
+== Backends suportados (armazenamento)
+
+Para usar o Astra Trident, você precisa de um ou mais dos seguintes back-ends compatíveis:
+
+* Amazon FSX para NetApp ONTAP
+* Azure NetApp Files
+* Cloud Volumes ONTAP
+* Cloud Volumes Service para GCP
+* FAS/AFF/Selecione 9,3 ou posterior
+* NetApp All SAN Array (ASA)
+* Software NetApp HCI/Element 11 ou superior
+
+
+
+
+== Requisitos de recursos
+
+A tabela abaixo resume os recursos disponíveis com esta versão do Astra Trident e as versões do Kubernetes compatíveis.
+
+[cols="3"]
+|===
+| Recurso | Versão do Kubernetes | É necessário ter portões? 
+
+
+| CSI Trident  a| 
+1,20 - 1,25
+ a| 
+Não
+
+
+
+| Instantâneos de volume  a| 
+1,20 - 1,25
+ a| 
+Não
+
+
+
+| PVC a partir de instantâneos de volume  a| 
+1,20 - 1,25
+ a| 
+Não
+
+
+
+| Redimensionamento iSCSI PV  a| 
+1,20 - 1,25
+ a| 
+Não
+
+
+
+| ONTAP bidirectional CHAP  a| 
+1,20 - 1,25
+ a| 
+Não
+
+
+
+| Políticas de exportação dinâmica  a| 
+1,20 - 1,25
+ a| 
+Não
+
+
+
+| Operador Trident  a| 
+1,20 - 1,25
+ a| 
+Não
+
+
+
+| Preparação do nó de trabalho automático (beta)  a| 
+1,20 - 1,25
+ a| 
+Não
+
+
+
+| Topologia de CSI  a| 
+1,20 - 1,25
+ a| 
+Não
+
+|===
+
+
+== Sistemas operacionais de host testados
+
+Embora o Astra Trident não "ofereça suporte" oficialmente a sistemas operacionais específicos, sabe-se que os seguintes itens funcionam:
+
+* Versões do RedHat CoreOS (RHCOS) suportadas pela OpenShift Container Platform
+* RHEL ou CentOS 7
+* Ubuntu 18,04 ou posterior (mais recente 22,04)
+* Windows Server 2019
+
+
+Por padrão, o Astra Trident é executado em um contentor e, portanto, será executado em qualquer trabalhador Linux. No entanto, esses funcionários precisam ser capazes de montar os volumes que o Astra Trident fornece usando o cliente NFS padrão ou iniciador iSCSI, dependendo dos backends que você está usando.
+
+O `tridentctl` utilitário também é executado em qualquer uma dessas distribuições do Linux.
+
+
+
+== Configuração de host
+
+Dependendo do(s) back-end(s) em uso, os utilitários NFS e/ou iSCSI devem ser instalados em todos os trabalhadores do cluster. Consulte link:../trident-use/worker-node-prep.html["aqui"^] para obter mais informações.
+
+
+
+== Configuração do sistema de storage
+
+O Astra Trident pode exigir algumas alterações em um sistema de storage antes que uma configuração de back-end o use. link:../trident-use/backends.html["aqui"^]Consulte para obter detalhes.
+
+
+
+== Imagens de contêineres e versões correspondentes do Kubernetes
+
+Para instalações com conexão de ar, a lista a seguir é uma referência das imagens de contêiner necessárias para instalar o Astra Trident. Use o `tridentctl images` comando para verificar a lista de imagens de contentor necessárias.
+
+[cols="2"]
+|===
+| Versão do Kubernetes | Imagem do recipiente 
+
+
+| v1.20.0  a| 
+* docker.io/NetApp/Trident:22.10.0
+* docker.io/NetApp/Trident-AutoSupport:22,10
+* provisionador do registry.k8s.io/sig-storage/csi:v3,3.0
+* registry.k8s.io/sig-storage/csi-attacher:v4,0.0
+* registry.k8s.io/sig-storage/csi-resizer:v1.6.0
+* registry.k8s.io/sig-storage/csi-snapshotter:v6,1.0
+* registry.k8s.io/sig-storage/csi-node-driver-registrador:v2.5.1
+* docker.io/NetApp/Trident-operador:22.10.0 (opcional)
+
+
+
+
+| v1.21.0  a| 
+* docker.io/NetApp/Trident:22.10.0
+* docker.io/NetApp/Trident-AutoSupport:22,10
+* provisionador do registry.k8s.io/sig-storage/csi:v3,3.0
+* registry.k8s.io/sig-storage/csi-attacher:v4,0.0
+* registry.k8s.io/sig-storage/csi-resizer:v1.6.0
+* registry.k8s.io/sig-storage/csi-snapshotter:v6,1.0
+* registry.k8s.io/sig-storage/csi-node-driver-registrador:v2.5.1
+* docker.io/NetApp/Trident-operador:22.10.0 (opcional)
+
+
+
+
+| v1.22.0  a| 
+* docker.io/NetApp/Trident:22.10.0
+* docker.io/NetApp/Trident-AutoSupport:22,10
+* provisionador do registry.k8s.io/sig-storage/csi:v3,3.0
+* registry.k8s.io/sig-storage/csi-attacher:v4,0.0
+* registry.k8s.io/sig-storage/csi-resizer:v1.6.0
+* registry.k8s.io/sig-storage/csi-snapshotter:v6,1.0
+* registry.k8s.io/sig-storage/csi-node-driver-registrador:v2.5.1
+* docker.io/NetApp/Trident-operador:22.10.0 (opcional)
+
+
+
+
+| v1.23.0  a| 
+* docker.io/NetApp/Trident:22.10.0
+* docker.io/NetApp/Trident-AutoSupport:22,10
+* provisionador do registry.k8s.io/sig-storage/csi:v3,3.0
+* registry.k8s.io/sig-storage/csi-attacher:v4,0.0
+* registry.k8s.io/sig-storage/csi-resizer:v1.6.0
+* registry.k8s.io/sig-storage/csi-snapshotter:v6,1.0
+* registry.k8s.io/sig-storage/csi-node-driver-registrador:v2.5.1
+* docker.io/NetApp/Trident-operador:22.10.0 (opcional)
+
+
+
+
+| v1.24.0  a| 
+* docker.io/NetApp/Trident:22.10.0
+* docker.io/NetApp/Trident-AutoSupport:22,10
+* provisionador do registry.k8s.io/sig-storage/csi:v3,3.0
+* registry.k8s.io/sig-storage/csi-attacher:v4,0.0
+* registry.k8s.io/sig-storage/csi-resizer:v1.6.0
+* registry.k8s.io/sig-storage/csi-snapshotter:v6,1.0
+* registry.k8s.io/sig-storage/csi-node-driver-registrador:v2.5.1
+* docker.io/NetApp/Trident-operador:22.10.0 (opcional)
+
+
+
+
+| v1.25.0  a| 
+* docker.io/NetApp/Trident:22.10.0
+* docker.io/NetApp/Trident-AutoSupport:22,10
+* provisionador do registry.k8s.io/sig-storage/csi:v3,3.0
+* registry.k8s.io/sig-storage/csi-attacher:v4,0.0
+* registry.k8s.io/sig-storage/csi-resizer:v1.6.0
+* registry.k8s.io/sig-storage/csi-snapshotter:v6,1.0
+* registry.k8s.io/sig-storage/csi-node-driver-registrador:v2.5.1
+* docker.io/NetApp/Trident-operador:22.10.0 (opcional)
+
+
+|===
+
+NOTE: No Kubernetes versão 1,20 e posterior, use a imagem validada `registry.k8s.gcr.io/sig-storage/csi-snapshotter:v6.x` somente se a `v1` versão estiver servindo o `volumesnapshots.snapshot.storage.k8s.gcr.io` CRD. Se a `v1beta1` versão estiver servindo o CRD com/sem a `v1` versão, use a imagem validada `registry.k8s.gcr.io/sig-storage/csi-snapshotter:v3.x`.

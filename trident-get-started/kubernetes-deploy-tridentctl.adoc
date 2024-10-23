@@ -1,0 +1,146 @@
+---
+sidebar: sidebar 
+permalink: trident-get-started/kubernetes-deploy-tridentctl.html 
+keywords: deploy, astra trident, methods, tridentctl, windows 
+summary: 'É possível implantar o Astra Trident usando `tridentctl`o .' 
+---
+= Implante com o tridentctl
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+É possível implantar o Astra Trident usando `tridentctl`o . É uma boa ideia familiarizar-se com o link:../trident-concepts/intro.html["conceitos básicos"]. Para personalizar sua `tridentctl` implantação, link:kubernetes-customize-deploy-tridentctl.html["Personalizar a implantação do tridentctl"]consulte .
+
+
+
+== Informações críticas sobre o Astra Trident 22,10
+
+*Você deve ler as seguintes informações críticas antes de atualizar para o Astra Trident 22,10.*
+
+[WARNING]
+.<strong> informações críticas sobre o Astra Trident 22.10 </strong>
+====
+* O Kubernetes 1,25 agora é compatível com o Trident. É necessário atualizar para o Astra Trident 22,10 antes da atualização para o Kubernetes 1,25.
+* O Astra Trident agora reforça estritamente o uso de configuração multipathing em ambientes SAN, com um valor recomendado de `find_multipaths: no` no arquivo multipath.conf.
++
+O uso de configuração não multipathing ou o uso `find_multipaths: yes` de ou `find_multipaths: smart` valor no arquivo multipath.conf resultará em falhas de montagem. A Trident recomenda o uso de `find_multipaths: no` desde a versão 21,07.
+
+
+
+====
+
+
+== Verifique os pré-requisitos
+
+Para implantar o Astra Trident, os seguintes pré-requisitos devem ser atendidos:
+
+* Privileges completo para um cluster compatível com Kubernetes.
+* Acesso a um sistema de storage NetApp compatível.
+* Funcionalidade de montar volumes de todos os nós de trabalho do Kubernetes.
+* Um host Linux com `kubectl` (ou `oc`, se você estiver usando o OpenShift) instalado e configurado para gerenciar o cluster do Kubernetes que deseja usar.
+* A `KUBECONFIG` variável de ambiente aponta para a configuração do cluster do Kubernetes.
+* Os link:requirements.html["Portas de recurso exigidas pelo Astra Trident"] estão ativados.
+* Se você estiver usando o Kubernetes com Docker Enterprise https://docs.docker.com/ee/ucp/user-access/cli/["Siga os passos para ativar o acesso CLI"^], .
+
+
+
+
+== Etapa 1: Qualifique seu cluster Kubernetes
+
+Faça login no host Linux e verifique se ele está gerenciando um trabalho, link:requirements.html["Cluster compatível com Kubernetes"^] e você tem o Privileges necessário.
+
+
+NOTE: Com o OpenShift, você usa `oc` em vez de `kubectl` em todos os exemplos que se seguem, e você deve fazer login como *system:admin* primeiro executando `oc login -u system:admin` ou `oc login -u kube-admin`.
+
+Para verificar a versão do Kubernetes, execute o seguinte comando:
+
+[listing]
+----
+kubectl version
+----
+Para verificar o administrador do cluster do Kubernetes Privileges, execute o seguinte comando:
+
+[listing]
+----
+kubectl auth can-i '*' '*' --all-namespaces
+----
+Para verificar se você pode iniciar um pod que usa uma imagem do Docker Hub e alcançar seu sistema de armazenamento pela rede de pod, execute o seguinte comando:
+
+[listing]
+----
+kubectl run -i --tty ping --image=busybox --restart=Never --rm -- \
+  ping <management IP>
+----
+Identifique a versão do servidor Kubernetes. Você o usará quando instalar o Astra Trident.
+
+
+
+== Passo 2: Baixe e extraia o instalador
+
+
+NOTE: O instalador do Trident cria um pod Trident, configura os objetos CRD que são usados para manter seu estado e inicializa os sidecars CSI que executam ações, como provisionar e anexar volumes aos hosts do cluster.
+
+Você pode baixar e extrair a versão mais recente do pacote de instalação do Trident link:https://github.com/NetApp/trident/releases/latest["A seção _assets_ no GitHub"^]do .
+
+Por exemplo, se a versão mais recente for 22.10.0:
+
+[listing]
+----
+wget https://github.com/NetApp/trident/releases/download/v22.10.0/trident-installer-22.10.0.tar.gz
+tar -xf trident-installer-22.10.0.tar.gz
+cd trident-installer
+----
+
+
+== Etapa 3: Instale o Astra Trident
+
+Instale o Astra Trident no namespace desejado executando o `tridentctl install` comando.
+
+[listing]
+----
+./tridentctl install -n trident
+....
+INFO Starting Trident installation.                namespace=trident
+INFO Created service account.
+INFO Created cluster role.
+INFO Created cluster role binding.
+INFO Added finalizers to custom resource definitions.
+INFO Created Trident service.
+INFO Created Trident secret.
+INFO Created Trident deployment.
+INFO Created Trident daemonset.
+INFO Waiting for Trident pod to start.
+INFO Trident pod started.                          namespace=trident pod=trident-csi-679648bd45-cv2mx
+INFO Waiting for Trident REST interface.
+INFO Trident REST interface is up.                 version=22.10.0
+INFO Trident installation succeeded.
+....
+----
+
+NOTE: Para permitir que o Astra Trident seja executado em nós do Windows, adicione o `--windows` sinalizador ao comando install: `$ ./tridentctl install --windows -n trident`.
+
+A saída é semelhante à seguinte apresentada quando o instalador está concluído. Dependendo do número de nós no cluster do Kubernetes, pode haver mais pods presentes:
+
+[listing]
+----
+kubectl get pod -n trident
+NAME                           READY   STATUS    RESTARTS   AGE
+trident-csi-679648bd45-cv2mx   4/4     Running   0          5m29s
+trident-csi-vgc8n              2/2     Running   0          5m29s
+
+./tridentctl -n trident version
++----------------+----------------+
+| SERVER VERSION | CLIENT VERSION |
++----------------+----------------+
+| 22.10.0        | 22.10.0        |
++----------------+----------------+
+----
+Para concluir a configuração do Astra Trident, continue para link:kubernetes-postdeployment.html["tarefas pós-implantação"].
+
+Se o instalador não for concluído com êxito ou `trident-csi-<generated id>` não tiver um status *Running*, a plataforma não foi instalada.
+
+
+NOTE: Para solucionar problemas durante a implantação, link:../troubleshooting.html["solução de problemas"]consulte a .

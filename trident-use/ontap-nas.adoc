@@ -1,0 +1,32 @@
+---
+sidebar: sidebar 
+permalink: trident-use/ontap-nas.html 
+keywords: trident backend, ontap nas, ontap-nas, ontap-nas-economy, ontap-nas-flexgroups, fsx 
+summary: Saiba mais sobre como configurar um back-end ONTAP com drivers nas ONTAP. 
+---
+= Configurar um back-end do ONTAP nas
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+Saiba mais sobre como configurar um back-end ONTAP com drivers nas ONTAP e Cloud Volumes ONTAP.
+
+* link:ontap-nas-prep.html["Preparação"]
+* link:ontap-nas-examples.html["Configuração e exemplos"]
+
+
+
+WARNING: Os clientes precisam usar `ontap-nas` o driver para workloads de produção que exigem proteção de dados, recuperação de desastres e mobilidade. O Astra Control oferece proteção aprimorada, recuperação de desastres e mobilidade para volumes criados com o `ontap-nas` motorista.  `ontap-nas-economy`O driver deve ser usado apenas em casos de uso limitados em que o uso antecipado de volume seja muito maior do que o compatível com o ONTAP, sem requisitos antecipados de proteção de dados, recuperação de desastres ou mobilidade (movimentação de volumes entre clusters do Kubernetes).
+
+
+
+== Permissões do usuário
+
+O Astra Trident espera ser executado como administrador da ONTAP ou SVM, normalmente usando o `admin` usuário do cluster ou um `vsadmin` usuário SVM, ou um usuário com um nome diferente que tenha a mesma função. Para implantações do Amazon FSX for NetApp ONTAP, o Astra Trident espera ser executado como administrador do ONTAP ou SVM, usando o usuário do cluster `fsxadmin` ou um `vsadmin` usuário SVM, ou um usuário com um nome diferente que tenha a mesma função. O `fsxadmin` usuário é um substituto limitado para o usuário administrador do cluster.
+
+
+NOTE: Se você usar o `limitAggregateUsage` parâmetro, as permissões de administrador do cluster serão necessárias. Ao usar o Amazon FSX for NetApp ONTAP com Astra Trident, o `limitAggregateUsage` parâmetro não funcionará com as `vsadmin` contas de usuário e `fsxadmin`. A operação de configuração falhará se você especificar este parâmetro.
+
+Embora seja possível criar uma função mais restritiva no ONTAP que um driver Trident pode usar, não recomendamos. A maioria das novas versões do Trident chamarão APIs adicionais que teriam que ser contabilizadas, tornando as atualizações difíceis e suscetíveis a erros.
